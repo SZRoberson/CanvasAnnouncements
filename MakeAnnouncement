@@ -1,0 +1,76 @@
+""" Script to automate uploading announcements to Canvas courses.
+
+Author: Sean Z. Roberson
+Last update: June 8, 2024
+
+Before beginning, make sure you have created an access token.
+This can be done by logging into Canvas, then navigating to your account settings
+(do this by clicking your portrait, then selecting Settings).
+Under "Approved Integrations," select New Access Token. Copy and paste this
+to a text file called API_Token.txt. Make sure to save it in the same directory
+this file is in! Once you close the dialog box that has the token, you can't recover
+it!
+
+You'll need to create an announcement as an HTML file. A
+sample one is included below:
+
+<p>Hello all,</p>
+<p>This is a sample announcement with a <a href = 'https://szroberson.github.io'>link</a> to my website.</p>
+<p>Sean Roberson</p>
+
+Numerous HTML tutorials are available. These can be made in your text editor of choice (Notepad, Sublime, VS Code, ...).
+If you are not comfortable writing raw HTML, you can write the announcement in Canvas, and extract its HTML code.
+
+You can run this directly in your terminal, or use a Python IDE such as Spyder or PyCharm. You'll be first prompted
+to select your announcement file in the dialog box that appears (in Spyder, you may need to Alt-Tab to make it appear).
+After selecting the announcement, type in a name for the announcement when prompted, then press enter.
+You'll then see that the announcements will post to the sections with the indicated course IDs.
+This functionality can be extended to upload files as well, but the API is not well-documented.
+
+"""
+
+from canvasapi import Canvas
+import tkinter as tk
+from tkinter import filedialog
+
+# Establish a connection to Canvas.
+
+url = 'https://utsa.instructure.com'
+
+# Load the token. Do this directly from the file.
+with open('API_Token.txt', 'r') as f:
+    api_key = f.read().strip()
+    
+canvas = Canvas(url, api_key)
+
+# Store user information.
+user = canvas.get_current_user()
+
+# Fetch all courses with a TA enrollment.
+courses = user.get_courses(enrollment_type = 'ta',
+                           enrollment_state = 'active')
+
+# Search for the announcement.
+msg_path = filedialog.askopenfilename(
+    title = 'Select Announcement',
+    filetypes = [("HTML files", "*.html"), ("Text files", "*.txt")]
+    )
+
+with open(msg_path, 'r', encoding = 'utf-8') as f:
+    msg_body = f.read()
+    
+msg_title = input('Enter the title of the announcement. ')
+
+# For each course, post the required announcement.
+course_ids = [course.id for course in courses]
+for course_id in course_ids:
+    course = canvas.get_course(course_id)
+    announcement = {
+        'title': msg_title,
+        'message': msg_body,
+        'is_announcement': True
+        }
+    course.create_discussion_topic(**announcement)
+    print(f'Announcement posted to course ID {course_id}.')
+    
+print('All announcements posted.')
